@@ -47,7 +47,7 @@ namespace RLBot.Modules
             var _http = new HttpClient();
             _http.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.2; WOW64; Trident/6.0)");
 
-            using (var response = await _http.GetAsync("https://api.github.com/repos/jeanke75/RocketLeaqueDiscordBot/commits"))
+            using (var response = await _http.GetAsync("https://api.github.com/repos/jeanke75/RocketLeaqueDiscordBotV2/commits"))
             {
                 if (!response.IsSuccessStatusCode)
                     latestChanges = "Error Recieving Latest Changes :x:";
