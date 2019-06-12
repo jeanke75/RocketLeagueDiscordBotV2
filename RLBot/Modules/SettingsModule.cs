@@ -38,17 +38,17 @@ namespace RLBot.Modules
                 }
 
                 // check if the channel is already in the database
-                var channelType = await Database.GetChannelType(Context.Guild.Id, Context.Channel.Id);
+                var queueChannel = await Database.GetQueueChannelAsync(Context.Guild.Id, Context.Channel.Id);
 
                 // update if it exists, otherwise insert
-                if (channelType != null)
+                if (queueChannel != null)
                 {
-                    await Database.UpdateChannelTypeAsync(Context.Guild.Id, Context.Channel.Id, playlist, isRanked);
+                    await Database.UpdateQueueChannelAsync(Context.Guild.Id, Context.Channel.Id, playlist, isRanked);
                     await ReplyAsync($"The channel settings have been updated.");
                 }
                 else
                 {
-                    await Database.InsertChannelTypeAsync(Context.Guild.Id, Context.Channel.Id, playlist, isRanked);
+                    await Database.InsertQueueChannelAsync(Context.Guild.Id, Context.Channel.Id, playlist, isRanked);
                     await ReplyAsync($"The channel settings have been added.");
                 }
             }
@@ -68,12 +68,12 @@ namespace RLBot.Modules
             try
             {
                 // check if the channel is in the database
-                var channelType = await Database.GetChannelType(Context.Guild.Id, Context.Channel.Id);
+                var queueChannel = await Database.GetQueueChannelAsync(Context.Guild.Id, Context.Channel.Id);
 
                 // remove if it exists
-                if (channelType != null)
+                if (queueChannel != null)
                 {
-                    await Database.DeleteChannelTypeAsync(Context.Guild.Id, Context.Channel.Id);
+                    await Database.DeleteQueueChannelAsync(Context.Guild.Id, Context.Channel.Id);
                     await ReplyAsync($"The channel settings have been deleted.");
                 }
                 else

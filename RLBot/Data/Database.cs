@@ -162,18 +162,18 @@ namespace RLBot.Data
         #endregion
 
         #region Server settings
-        public static async Task<ChannelType> GetChannelType(ulong guildId, ulong channelId)
+        public static async Task<ChannelType> GetQueueChannelAsync(ulong guildId, ulong channelId)
         {
             ChannelType result = null;
             using (SqlConnection conn = GetSqlConnection())
             {
                 await conn.OpenAsync();
-                result = await GetChannelType(conn, null, guildId, channelId);
+                result = await GetQueueChannelAsync(conn, null, guildId, channelId);
             }
             return result;
         }
 
-        private static async Task<ChannelType> GetChannelType(SqlConnection conn, SqlTransaction tr, ulong guildId, ulong channelId)
+        private static async Task<ChannelType> GetQueueChannelAsync(SqlConnection conn, SqlTransaction tr, ulong guildId, ulong channelId)
         {
             ChannelType result = null;
             using (SqlCommand cmd = conn.CreateCommand())
@@ -202,7 +202,7 @@ namespace RLBot.Data
             return result;
         }
 
-        public static async Task InsertChannelTypeAsync(ulong guildId, ulong channelId, RLPlaylist playlist, bool ranked)
+        public static async Task InsertQueueChannelAsync(ulong guildId, ulong channelId, RLPlaylist playlist, bool ranked)
         {
             using (SqlConnection conn = GetSqlConnection())
             {
@@ -234,7 +234,7 @@ namespace RLBot.Data
             }
         }
 
-        public static async Task UpdateChannelTypeAsync(ulong guildId, ulong channelId, RLPlaylist playlist, bool ranked)
+        public static async Task UpdateQueueChannelAsync(ulong guildId, ulong channelId, RLPlaylist playlist, bool ranked)
         {
             using (SqlConnection conn = GetSqlConnection())
             {
@@ -266,7 +266,7 @@ namespace RLBot.Data
             }
         }
 
-        public static async Task DeleteChannelTypeAsync(ulong guildId, ulong channelId)
+        public static async Task DeleteQueueChannelAsync(ulong guildId, ulong channelId)
         {
             using (SqlConnection conn = GetSqlConnection())
             {

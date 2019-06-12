@@ -41,24 +41,24 @@ namespace RLBot.Modules
             {
                 var channel = Context.Channel as SocketGuildChannel;
 
-                var channeltype = await Database.GetChannelType(Context.Guild.Id, Context.Channel.Id);
-                if (channeltype == null)
+                var queueChannel = await Database.GetQueueChannelAsync(Context.Guild.Id, Context.Channel.Id);
+                if (queueChannel == null)
                 {
                     await ReplyAsync($"No settings found for this channel, add them by running the command \"{RLBot.COMMAND_PREFIX}setchannel\".");
                     return;
                 }
 
                 RLQueue queue;
-                switch (channeltype.Playlist)
+                switch (queueChannel.Playlist)
                 {
                     case RLPlaylist.Duel:
-                        queue = RLQueue.DuelQueue(channel, channeltype.Ranked);
+                        queue = RLQueue.DuelQueue(channel, queueChannel.Ranked);
                         break;
                     case RLPlaylist.Doubles:
-                        queue = RLQueue.DoublesQueue(channel, channeltype.Ranked);
+                        queue = RLQueue.DoublesQueue(channel, queueChannel.Ranked);
                         break;
                     case RLPlaylist.Standard:
-                        queue = RLQueue.StandardQueue(channel, channeltype.Ranked);
+                        queue = RLQueue.StandardQueue(channel, queueChannel.Ranked);
                         break;
                     default:
                         await ReplyAsync("This is not valid queue type.");
