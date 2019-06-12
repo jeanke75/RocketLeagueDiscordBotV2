@@ -183,7 +183,7 @@ namespace RLBot.Data
 
                 cmd.Parameters.AddWithValue("@GuildID", DbType.Decimal).Value = (decimal)guildId;
                 cmd.Parameters.AddWithValue("@ChannelID", DbType.Decimal).Value = (decimal)channelId;
-                cmd.CommandText = "SELECT * FROM ChannelType WHERE GuildID = @GuildID AND ChannelID = @ChannelID;";
+                cmd.CommandText = "SELECT * FROM QueueChannel WHERE GuildID = @GuildID AND ChannelID = @ChannelID;";
 
                 using (SqlDataReader reader = cmd.ExecuteReader())
                 {
@@ -219,7 +219,7 @@ namespace RLBot.Data
                             cmd.Parameters.AddWithValue("@ChannelID", DbType.Decimal).Value = (decimal)channelId;
                             cmd.Parameters.AddWithValue("@Playlist", DbType.Byte).Value = (byte)playlist;
                             cmd.Parameters.AddWithValue("@Ranked", DbType.Boolean).Value = ranked;
-                            cmd.CommandText = "INSERT INTO ChannelType(GuildID, ChannelID, Playlist, Ranked) VALUES(@GuildID, @ChannelID, @Playlist, @Ranked);";
+                            cmd.CommandText = "INSERT INTO QueueChannel(GuildID, ChannelID, Playlist, Ranked) VALUES(@GuildID, @ChannelID, @Playlist, @Ranked);";
 
                             await cmd.ExecuteNonQueryAsync();
                         }
@@ -251,7 +251,7 @@ namespace RLBot.Data
                             cmd.Parameters.AddWithValue("@ChannelID", DbType.Decimal).Value = (decimal)channelId;
                             cmd.Parameters.AddWithValue("@Playlist", DbType.Byte).Value = (byte)playlist;
                             cmd.Parameters.AddWithValue("@Ranked", DbType.Boolean).Value = ranked;
-                            cmd.CommandText = "UPDATE ChannelType SET Playlist = @Playlist, Ranked = @Ranked;";
+                            cmd.CommandText = "UPDATE QueueChannel SET Playlist = @Playlist, Ranked = @Ranked;";
 
                             await cmd.ExecuteNonQueryAsync();
                         }
@@ -281,7 +281,7 @@ namespace RLBot.Data
 
                             cmd.Parameters.AddWithValue("@GuildID", DbType.Decimal).Value = (decimal)guildId;
                             cmd.Parameters.AddWithValue("@ChannelID", DbType.Decimal).Value = (decimal)channelId;
-                            cmd.CommandText = "DELETE FROM ChannelType WHERE GuildID = @GuildID AND ChannelID = @ChannelID;";
+                            cmd.CommandText = "DELETE FROM QueueChannel WHERE GuildID = @GuildID AND ChannelID = @ChannelID;";
 
                             await cmd.ExecuteNonQueryAsync();
                         }
