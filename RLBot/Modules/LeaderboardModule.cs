@@ -1,19 +1,17 @@
-﻿using System;
-using System.Data.SqlClient;
-using System.Threading.Tasks;
-using Discord;
+﻿using Discord;
 using Discord.Commands;
 using RLBot.Data;
 using RLBot.Data.Models;
 using RLBot.Models;
-using RLBot.Preconditions;
 using RLBot.TypeReaders;
+using System;
+using System.Data.SqlClient;
+using System.Threading.Tasks;
 
 namespace RLBot.Modules
 {
     [Name("Leaderboard")]
     [Summary("Everything involving the leaderboard")]
-    [RequireChannel(386261794366423060)]
     public class LeaderboardModule : ModuleBase<SocketCommandContext>
     {
         [Command("stats", RunMode = RunMode.Async)]

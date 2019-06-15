@@ -136,7 +136,7 @@ namespace RLBot.Modules
                 var queueChannel = await Context.Guild.CreateTextChannelAsync(name, x =>
                 {
                     x.SlowModeInterval = 5;
-                    x.Topic = $"Commands: '{RLBot.COMMAND_PREFIX}qo(pen)', '{RLBot.COMMAND_PREFIX}qj(oin)', '{RLBot.COMMAND_PREFIX}ql(eave)', '{RLBot.COMMAND_PREFIX}qs(tatus)', '{RLBot.COMMAND_PREFIX}qsub', '{RLBot.COMMAND_PREFIX}qp(ick)', '{RLBot.COMMAND_PREFIX}qr(eset)'";
+                    x.Topic = $"Commands: {RLBot.COMMAND_PREFIX}qo(pen), {RLBot.COMMAND_PREFIX}qj(oin), {RLBot.COMMAND_PREFIX}ql(eave), {RLBot.COMMAND_PREFIX}qs(tatus), {RLBot.COMMAND_PREFIX}qsub, {RLBot.COMMAND_PREFIX}qp(ick), {RLBot.COMMAND_PREFIX}qr(eset)";
                 });
                 await Database.InsertQueueChannelAsync(Context.Guild.Id, queueChannel.Id, playlist, ranked, requiredElo);
 

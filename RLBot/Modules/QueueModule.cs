@@ -155,6 +155,11 @@ namespace RLBot.Modules
         [RequireBotPermission(GuildPermission.EmbedLinks)]
         public async Task ListOfPlayersInQueueAsync()
         {
+            if (await Database.GetQueueChannelAsync(Context.Guild.Id, Context.Channel.Id) == null)
+            {
+                return;
+            }
+
             if (!queues.TryGetValue(Context.Channel.Id, out RLQueue queue))
             {
                 await ReplyAsync(NOT_OPEN);
@@ -184,6 +189,11 @@ namespace RLBot.Modules
             var author = Context.Message.Author;
             try
             {
+                if (await Database.GetQueueChannelAsync(Context.Guild.Id, Context.Channel.Id) == null)
+                {
+                    return;
+                }
+
                 if (subPlayer.Id == currentPlayer.Id)
                 {
                     await ReplyAsync($"{author.Mention}, you cannot sub the user for himself!");
@@ -266,6 +276,11 @@ namespace RLBot.Modules
         [RequireBotPermission(GuildPermission.SendMessages)]
         public async Task ResetQueueAsync()
         {
+            if (await Database.GetQueueChannelAsync(Context.Guild.Id, Context.Channel.Id) == null)
+            {
+                return;
+            }
+
             if (!queues.TryRemove(Context.Channel.Id, out RLQueue queue))
             {
                 await ReplyAsync(NOT_OPEN);
@@ -285,6 +300,11 @@ namespace RLBot.Modules
         {
             try
             {
+                if (await Database.GetQueueChannelAsync(Context.Guild.Id, Context.Channel.Id) == null)
+                {
+                    return;
+                }
+
                 if (!queues.TryGetValue(Context.Channel.Id, out RLQueue queue))
                 {
                     await ReplyAsync(NOT_OPEN);
