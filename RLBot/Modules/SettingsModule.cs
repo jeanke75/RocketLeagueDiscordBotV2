@@ -77,6 +77,7 @@ namespace RLBot.Modules
                     await ReplyAsync($"The bot needs to be installed first, use the command '{RLBot.COMMAND_PREFIX}install'.");
                     return;
                 }
+
                 await ReplyAsync("Ranked? (y/n)");
                 var rankedResponse = await NextMessageAsync(timeout: new TimeSpan(0, 0, 30));
                 if (rankedResponse == null)
@@ -150,21 +151,6 @@ namespace RLBot.Modules
 
 
                 await ReplyAsync($"The queue channel has been created.");
-
-                // check if the channel is already in the database
-                //var queueChannel = await Database.GetQueueChannelAsync(Context.Guild.Id, Context.Channel.Id);
-
-                // update if it exists, otherwise insert
-                /*if (queueChannel != null)
-                {
-                    await Database.UpdateQueueChannelAsync(Context.Guild.Id, Context.Channel.Id, playlist, ranked);
-                    await ReplyAsync($"The channel settings have been updated.");
-                }
-                else
-                {
-                    await Database.InsertQueueChannelAsync(Context.Guild.Id, Context.Channel.Id, playlist, ranked);
-                    await ReplyAsync($"The channel settings have been added.");
-                }*/
             }
             catch (Exception ex)
             {

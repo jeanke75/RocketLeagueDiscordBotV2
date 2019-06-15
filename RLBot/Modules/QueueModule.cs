@@ -36,16 +36,15 @@ namespace RLBot.Modules
         [RequireBotPermission(GuildPermission.SendMessages)]
         public async Task OpenQueueAsync()
         {
+            var queueChannel = await Database.GetQueueChannelAsync(Context.Guild.Id, Context.Channel.Id);
+            if (queueChannel == null)
+            {
+                return;
+            }
+
             if (!queues.TryGetValue(Context.Channel.Id, out _))
             {
                 var channel = Context.Channel as SocketGuildChannel;
-
-                var queueChannel = await Database.GetQueueChannelAsync(Context.Guild.Id, Context.Channel.Id);
-                if (queueChannel == null)
-                {
-                    await ReplyAsync($"No settings found for this channel, add them by running the command \"{RLBot.COMMAND_PREFIX}setchannel\".");
-                    return;
-                }
 
                 RLQueue queue;
                 switch (queueChannel.Playlist)
@@ -80,7 +79,20 @@ namespace RLBot.Modules
         [RequireBotPermission(GuildPermission.SendMessages)]
         public async Task JoinQueueAsync()
         {
+            var queueChannel = await Database.GetQueueChannelAsync(Context.Guild.Id, Context.Channel.Id);
+            if (queueChannel == null)
+            {
+                return;
+            }
+
             var author = Context.Message.Author as SocketGuildUser;
+
+            var userinfo = await Database.GetUserInfoAsync(Context.Guild.Id, author.Id);
+            if (userinfo == null)
+            {
+                await ReplyAsync($"{author.Mention}, you need to register first.");
+                return;
+            }
 
             if (!queues.TryGetValue(Context.Channel.Id, out RLQueue queue))
             {
@@ -90,7 +102,8 @@ namespace RLBot.Modules
 
             if (queue.Users.Count < queue.GetSize())
             {
-                if (CanPlayerJoinQueue(author, queue))
+                // If it's a ranked queue, check if the player has the required elo
+                if (!queue.IsLeaderboardQueue || HasRequiredElo(userinfo, queueChannel))
                 {
                     if (!queue.Users.ContainsKey(author.Id))
                     {
@@ -103,7 +116,7 @@ namespace RLBot.Modules
                         await ReplyAsync($"{author.Mention}, you've already joined the queue.");
                 }
                 else
-                    await ReplyAsync($"{author.Mention}, you don't have the appropriate rank to join the queue.");
+                    await ReplyAsync($"{author.Mention}, you don't have the required elo to join the queue.");
             }
             else
                 await ReplyAsync($"{author.Mention}, the queue is full.");
@@ -116,6 +129,11 @@ namespace RLBot.Modules
         [RequireBotPermission(GuildPermission.SendMessages)]
         public async Task LeaveQueueAsync()
         {
+            if (await Database.GetQueueChannelAsync(Context.Guild.Id, Context.Channel.Id) == null)
+            {
+                return;
+            }
+
             var author = Context.Message.Author as SocketGuildUser;
 
             if (!queues.TryGetValue(Context.Channel.Id, out RLQueue queue))
@@ -701,16 +719,17 @@ namespace RLBot.Modules
             return newElo;
         }
 
-        private bool CanPlayerJoinQueue(SocketUser player, RLQueue queue)
+        private bool HasRequiredElo(UserInfo userInfo, QueueChannel queueChannel)
         {
-            if (!queue.IsLeaderboardQueue) return true;
-
-            SocketGuildUser user = player as SocketGuildUser;
-            var rank = Global.GetChannelRankRequirement(queue.Channel.Id);
-            if (rank == null)
-                throw new RLException($"Couldn't retrieve the rank requirement! ({queue.Channel.Id})");
-
-            return user.Roles.Select(x => x.Id).Contains(rank.RoleID);
+            switch (queueChannel.Playlist)
+            {
+                case RLPlaylist.Duel:
+                    return userInfo.Elo1s >= queueChannel.RequiredElo;
+                case RLPlaylist.Doubles:
+                    return userInfo.Elo2s >= queueChannel.RequiredElo;
+                default:
+                    return userInfo.Elo3s >= queueChannel.RequiredElo;
+            }
         }
     }
 }
