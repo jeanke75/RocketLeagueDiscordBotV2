@@ -306,7 +306,7 @@ namespace RLBot.Data
             }
         }
 
-        public static async Task UpdateQueueChannelAsync(ulong guildId, ulong channelId, RLPlaylist playlist, bool ranked)
+        public static async Task UpdateQueueChannelAsync(ulong guildId, ulong channelId, RLPlaylist playlist, bool ranked, int? requiredElo)
         {
             using (SqlConnection conn = GetSqlConnection())
             {
@@ -323,7 +323,15 @@ namespace RLBot.Data
                             cmd.Parameters.AddWithValue("@ChannelID", DbType.Decimal).Value = (decimal)channelId;
                             cmd.Parameters.AddWithValue("@Playlist", DbType.Byte).Value = (byte)playlist;
                             cmd.Parameters.AddWithValue("@Ranked", DbType.Boolean).Value = ranked;
-                            cmd.CommandText = "UPDATE QueueChannel SET Playlist = @Playlist, Ranked = @Ranked;";
+                            if (ranked)
+                            {
+                                cmd.Parameters.AddWithValue("@RequiredElo", DbType.Int32).Value = requiredElo;
+                            }
+                            else
+                            {
+                                cmd.Parameters.AddWithValue("@RequiredElo", DBNull.Value);
+                            }
+                            cmd.CommandText = "UPDATE QueueChannel SET Playlist = @Playlist, Ranked = @Ranked, RequiredElo = @RequiredElo;";
 
                             await cmd.ExecuteNonQueryAsync();
                         }

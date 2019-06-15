@@ -70,13 +70,13 @@ namespace RLBot.Modules
             await Context.Channel.TriggerTypingAsync();
             try
             {
+                // Check if the bot has been set up yet for this guild
                 var settings = await Database.GetSettings(Context.Guild.Id);
                 if (settings == null)
                 {
-                    await ReplyAsync($"No settings found for this channel, add them by running the command \"{RLBot.COMMAND_PREFIX}setchannel\".");
+                    await ReplyAsync($"The bot needs to be installed first, use the command '{RLBot.COMMAND_PREFIX}install'.");
                     return;
                 }
-
                 await ReplyAsync("Ranked? (y/n)");
                 var rankedResponse = await NextMessageAsync(timeout: new TimeSpan(0, 0, 30));
                 if (rankedResponse == null)
@@ -165,6 +165,87 @@ namespace RLBot.Modules
                     await Database.InsertQueueChannelAsync(Context.Guild.Id, Context.Channel.Id, playlist, ranked);
                     await ReplyAsync($"The channel settings have been added.");
                 }*/
+            }
+            catch (Exception ex)
+            {
+                await ReplyAsync($"Updating the channel settings failed: " + ex.Message);
+            }
+        }
+
+        [Command("updatechannel", RunMode = RunMode.Async)]
+        [Summary("Update a queue channel.")]
+        [Remarks("updatechannel <1s/2s/3s>")]
+        [RequireBotPermission(GuildPermission.SendMessages | GuildPermission.ManageChannels)]
+        public async Task UpdateQueueChannelAsync([OverrideTypeReader(typeof(RLPlaylistTypeReader))] RLPlaylist playlist)
+        {
+            await Context.Channel.TriggerTypingAsync();
+            try
+            {
+                // Check if this a queue channel
+                var channel = await Database.GetQueueChannelAsync(Context.Guild.Id, Context.Channel.Id);
+
+                if (channel == null)
+                {
+                    await ReplyAsync($"This command can only be used to update an existing queue channel. Use the command '{RLBot.COMMAND_PREFIX}createchannel' to make one instead.");
+                    return;
+                }
+
+                await ReplyAsync("Ranked? (y/n)");
+                var rankedResponse = await NextMessageAsync(timeout: new TimeSpan(0, 0, 30));
+                if (rankedResponse == null)
+                {
+                    await ReplyAsync("Message timed out..");
+                    return;
+                }
+
+                bool ranked = rankedResponse.Content.ToLower() == "y";
+
+                int? requiredElo = null;
+                if (ranked)
+                {
+                    await ReplyAsync("What is the minimum required elo for this channel? (Tip: Make sure you have a channel that has 0 as the minimum)");
+                    var eloResponse = await NextMessageAsync(timeout: new TimeSpan(0, 0, 30));
+                    if (eloResponse == null)
+                    {
+                        await ReplyAsync("Message timed out..");
+                        return;
+                    }
+
+                    if (int.TryParse(eloResponse.Content, out int elo))
+                    {
+                        if (elo < 0)
+                        {
+                            await ReplyAsync("The minimum elo can't be lower than 0.");
+                            return;
+                        }
+
+                        requiredElo = elo;
+                    }
+                    else
+                    {
+                        await ReplyAsync("You must provide a number.");
+                        return;
+                    }
+                }
+
+                string name;
+                switch (playlist)
+                {
+                    case RLPlaylist.Duel:
+                        name = "1v1";
+                        break;
+                    case RLPlaylist.Doubles:
+                        name = "2v2";
+                        break;
+                    case RLPlaylist.Standard:
+                        name = "3v3";
+                        break;
+                    default:
+                        return; // won't get here unless more playlists are added to the enum
+                }
+
+                await Database.UpdateQueueChannelAsync(Context.Guild.Id, Context.Channel.Id, playlist, ranked, requiredElo);
+                await ReplyAsync($"The channel has been updated.");
             }
             catch (Exception ex)
             {
