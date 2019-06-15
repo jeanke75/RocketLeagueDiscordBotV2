@@ -1,4 +1,5 @@
 ﻿using Discord;
+using Discord.Addons.Interactive;
 using Discord.Commands;
 using RLBot.Data;
 using RLBot.Models;
@@ -12,7 +13,7 @@ namespace RLBot.Modules
     [Summary("Change settings for the bot")]
     [RequireOwner]
     //[RequireUserPermission(GuildPermission.Administrator)]
-    public class SettingsModule : ModuleBase<SocketCommandContext>
+    public class SettingsModule : InteractiveBase<SocketCommandContext>
     {
         [Command("install", RunMode = RunMode.Async)]
         [Summary("Creates a role and a channel for submitting the scores.")]
@@ -40,7 +41,7 @@ namespace RLBot.Modules
                 });
 
                 // Set the bot's permissions
-                await submitChannel.AddPermissionOverwriteAsync(Context.Client.CurrentUser, new OverwritePermissions(PermValue.Deny, PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Allow, PermValue.Deny));
+                await submitChannel.AddPermissionOverwriteAsync(Context.Client.CurrentUser, new OverwritePermissions(PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Allow, PermValue.Deny));
 
                 // Give permission to people with the role
                 await submitChannel.AddPermissionOverwriteAsync(role, new OverwritePermissions(PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Allow, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny));
@@ -59,43 +60,93 @@ namespace RLBot.Modules
             }
         }
 
-        [Command("setchannel", RunMode = RunMode.Async)]
-        [Summary("Update the settings for the channel this is ran in.")]
-        [Remarks("setchannel <1s/2s/3s> <ranked/unranked")]
-        [RequireBotPermission(GuildPermission.SendMessages)]
-        public async Task UpsertChannelAsync([OverrideTypeReader(typeof(RLPlaylistTypeReader))] RLPlaylist playlist, string ranked)
+        [Command("createchannel", RunMode = RunMode.Async)]
+        [Summary("Create a queue channel.")]
+        [Remarks("createchannel <1s/2s/3s>")]
+        [RequireBotPermission(GuildPermission.SendMessages | GuildPermission.ManageChannels)]
+        public async Task CreateQueueChannelAsync([OverrideTypeReader(typeof(RLPlaylistTypeReader))] RLPlaylist playlist)
         {
             await Context.Channel.TriggerTypingAsync();
             try
             {
-                bool isRanked;
-                switch (ranked.ToLower())
+                var settings = await Database.GetSettings(Context.Guild.Id);
+                if (settings == null)
                 {
-                    case "ranked":
-                        isRanked = true;
-                        break;
-                    case "unranked":
-                        isRanked = false;
-                        break;
-                    default:
-                        await ReplyAsync($"The 2nd argument must be 'ranked' or 'unranked'!");
-                        return;
+                    await ReplyAsync($"No settings found for this channel, add them by running the command \"{RLBot.COMMAND_PREFIX}setchannel\".");
+                    return;
                 }
 
+                await ReplyAsync("Ranked? (y/n)");
+                var rankedResponse = await NextMessageAsync(timeout: new TimeSpan(0, 0, 30));
+                if (rankedResponse == null)
+                {
+                    await ReplyAsync("Message timed out..");
+                    return;
+                }
+
+                bool ranked = rankedResponse.Content.ToLower() == "y";
+
+                int? requiredElo = null;
+                if (ranked)
+                {
+                    await ReplyAsync("What is the minimum required elo for this channel? (Tip: Make sure you have a channel that has 0 as the minimum)");
+                    var eloResponse = await NextMessageAsync(timeout: new TimeSpan(0, 0, 30));
+                    if (eloResponse == null)
+                    {
+                        await ReplyAsync("Message timed out..");
+                        return;
+                    }
+
+                    if (int.TryParse(eloResponse.Content, out int elo))
+                    {
+                        if (elo < 0)
+                        {
+                            await ReplyAsync("The minimum elo can't be lower than 0.");
+                            return;
+                        }
+
+                        requiredElo = elo;
+                    }
+                    else
+                    {
+                        await ReplyAsync("You must provide a number.");
+                        return;
+                    }
+                }
+
+                var queueChannel = await Context.Guild.CreateTextChannelAsync("submit-scores", x =>
+                {
+                    x.SlowModeInterval = 5;
+                    x.Topic = $"Commands: '{RLBot.COMMAND_PREFIX}qo(pen)', '{RLBot.COMMAND_PREFIX}qj(oin)', '{RLBot.COMMAND_PREFIX}ql(eave)', '{RLBot.COMMAND_PREFIX}qs(tatus)', '{RLBot.COMMAND_PREFIX}qsub', '{RLBot.COMMAND_PREFIX}qp(ick)', '{RLBot.COMMAND_PREFIX}qr(eset)'";
+                });
+                await Database.InsertQueueChannelAsync(Context.Guild.Id, queueChannel.Id, playlist, ranked, requiredElo);
+
+                // Set the bot's permissions
+                await queueChannel.AddPermissionOverwriteAsync(Context.Client.CurrentUser, new OverwritePermissions(PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Allow, PermValue.Deny));
+
+                // Give permission to people with the role
+                await queueChannel.AddPermissionOverwriteAsync(Context.Guild.GetRole(settings.RoleID), new OverwritePermissions(PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Deny, PermValue.Allow, PermValue.Deny, PermValue.Allow, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny));
+
+                // Remove all permissions for everyone else
+                await queueChannel.AddPermissionOverwriteAsync(Context.Guild.EveryoneRole, new OverwritePermissions(PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny));
+
+
+                await ReplyAsync($"The queue channel has been created.");
+
                 // check if the channel is already in the database
-                var queueChannel = await Database.GetQueueChannelAsync(Context.Guild.Id, Context.Channel.Id);
+                //var queueChannel = await Database.GetQueueChannelAsync(Context.Guild.Id, Context.Channel.Id);
 
                 // update if it exists, otherwise insert
-                if (queueChannel != null)
+                /*if (queueChannel != null)
                 {
-                    await Database.UpdateQueueChannelAsync(Context.Guild.Id, Context.Channel.Id, playlist, isRanked);
+                    await Database.UpdateQueueChannelAsync(Context.Guild.Id, Context.Channel.Id, playlist, ranked);
                     await ReplyAsync($"The channel settings have been updated.");
                 }
                 else
                 {
-                    await Database.InsertQueueChannelAsync(Context.Guild.Id, Context.Channel.Id, playlist, isRanked);
+                    await Database.InsertQueueChannelAsync(Context.Guild.Id, Context.Channel.Id, playlist, ranked);
                     await ReplyAsync($"The channel settings have been added.");
-                }
+                }*/
             }
             catch (Exception ex)
             {

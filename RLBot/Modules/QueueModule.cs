@@ -7,7 +7,6 @@ using RLBot.Data;
 using RLBot.Data.Models;
 using RLBot.Exceptions;
 using RLBot.Models;
-using RLBot.Preconditions;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -21,8 +20,8 @@ namespace RLBot.Modules
     [Summary("Creation and utilization of a queue")]
     public class QueueModule : InteractiveBase<SocketCommandContext>
     {
-        private static ConcurrentDictionary<ulong, RLQueue> queues = new ConcurrentDictionary<ulong, RLQueue>();
-        private static Random rnd = new Random();
+        private static readonly ConcurrentDictionary<ulong, RLQueue> queues = new ConcurrentDictionary<ulong, RLQueue>();
+        private static readonly Random rnd = new Random();
         private readonly string NOT_OPEN = "There is no open queue atm. Type \"" + RLBot.COMMAND_PREFIX + "qopen\", to start a new one.";
         private readonly string NOT_ENOUGH_PLAYERS = "Not enough players have joined the queue yet! {0}/{1}";
 

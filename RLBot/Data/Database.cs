@@ -225,9 +225,9 @@ namespace RLBot.Data
         #endregion
 
         #region QueueChannel
-        public static async Task<ChannelType> GetQueueChannelAsync(ulong guildId, ulong channelId)
+        public static async Task<QueueChannel> GetQueueChannelAsync(ulong guildId, ulong channelId)
         {
-            ChannelType result = null;
+            QueueChannel result = null;
             using (SqlConnection conn = GetSqlConnection())
             {
                 await conn.OpenAsync();
@@ -236,9 +236,9 @@ namespace RLBot.Data
             return result;
         }
 
-        private static async Task<ChannelType> GetQueueChannelAsync(SqlConnection conn, SqlTransaction tr, ulong guildId, ulong channelId)
+        private static async Task<QueueChannel> GetQueueChannelAsync(SqlConnection conn, SqlTransaction tr, ulong guildId, ulong channelId)
         {
-            ChannelType result = null;
+            QueueChannel result = null;
             using (SqlCommand cmd = conn.CreateCommand())
             {
                 if (tr != null)
@@ -253,7 +253,7 @@ namespace RLBot.Data
                     if (reader.HasRows)
                     {
                         await reader.ReadAsync();
-                        result = new ChannelType()
+                        result = new QueueChannel()
                         {
                             Playlist = (RLPlaylist)(byte)reader["Playlist"],
                             Ranked = (bool)reader["Ranked"]
@@ -265,7 +265,7 @@ namespace RLBot.Data
             return result;
         }
 
-        public static async Task InsertQueueChannelAsync(ulong guildId, ulong channelId, RLPlaylist playlist, bool ranked)
+        public static async Task InsertQueueChannelAsync(ulong guildId, ulong channelId, RLPlaylist playlist, bool ranked, int? requiredElo)
         {
             using (SqlConnection conn = GetSqlConnection())
             {
@@ -282,7 +282,8 @@ namespace RLBot.Data
                             cmd.Parameters.AddWithValue("@ChannelID", DbType.Decimal).Value = (decimal)channelId;
                             cmd.Parameters.AddWithValue("@Playlist", DbType.Byte).Value = (byte)playlist;
                             cmd.Parameters.AddWithValue("@Ranked", DbType.Boolean).Value = ranked;
-                            cmd.CommandText = "INSERT INTO QueueChannel(GuildID, ChannelID, Playlist, Ranked) VALUES(@GuildID, @ChannelID, @Playlist, @Ranked);";
+                            cmd.Parameters.AddWithValue("@RequiredElo", DbType.Int32).Value = requiredElo;
+                            cmd.CommandText = "INSERT INTO QueueChannel(GuildID, ChannelID, Playlist, Ranked, RequiredElo) VALUES(@GuildID, @ChannelID, @Playlist, @Ranked, @RequiredElo);";
 
                             await cmd.ExecuteNonQueryAsync();
                         }

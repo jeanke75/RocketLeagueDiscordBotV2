@@ -210,7 +210,7 @@
   <ItemGroup>
     <Compile Include="Data\Database.cs" />
     <Compile Include="Data\Global.cs" />
-    <Compile Include="Data\Models\ChannelType.cs" />
+    <Compile Include="Data\Models\QueueChannel.cs" />
     <Compile Include="Data\Models\Leaderboard.cs" />
     <Compile Include="Data\Models\Queue.cs" />
     <Compile Include="Data\Models\QueuePlayer.cs" />
