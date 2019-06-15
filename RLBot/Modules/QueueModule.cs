@@ -452,7 +452,7 @@ namespace RLBot.Modules
                 // Check if the command is ran in the correct channel
                 if (Context.Channel.Id != settings.SubmitChannelID)
                 {
-                    await ReplyAsync($"Scores can only be submitted in <#{settings.SubmitChannelID}!");
+                    await ReplyAsync($"Scores can only be submitted in <#{settings.SubmitChannelID}>!");
                     return;
                 }
 
