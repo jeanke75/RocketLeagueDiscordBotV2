@@ -18,7 +18,7 @@ namespace RLBot.Modules
         [Summary("Creates a role and a channel for submitting the scores.")]
         [Remarks("install")]
         [RequireBotPermission(GuildPermission.SendMessages | GuildPermission.ManageRoles | GuildPermission.ManageChannels)]
-        public async Task InstallAsync([OverrideTypeReader(typeof(RLPlaylistTypeReader))] RLPlaylist playlist, string ranked)
+        public async Task InstallAsync()
         {
             await Context.Channel.TriggerTypingAsync();
             try
