@@ -257,7 +257,7 @@ namespace RLBot.Data
                         {
                             Playlist = (RLPlaylist)(byte)reader["Playlist"],
                             Ranked = (bool)reader["Ranked"],
-                            RequiredElo = (int?)reader["RequiredElo"]
+                            RequiredElo = (reader["RequiredElo"] as int?).GetValueOrDefault()
                         };
                     }
                     reader.Close();
@@ -289,7 +289,7 @@ namespace RLBot.Data
                             }
                             else
                             {
-                                cmd.Parameters.AddWithValue("@RequiredElo", DBNull.Value );
+                                cmd.Parameters.AddWithValue("@RequiredElo", DBNull.Value);
                             }
                             cmd.CommandText = "INSERT INTO QueueChannel(GuildID, ChannelID, Playlist, Ranked, RequiredElo) VALUES(@GuildID, @ChannelID, @Playlist, @Ranked, @RequiredElo);";
 
