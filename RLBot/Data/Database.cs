@@ -289,7 +289,7 @@ namespace RLBot.Data
                             }
                             else
                             {
-                                cmd.Parameters.AddWithValue("@RequiredElo", DBNull.Value);
+                                cmd.Parameters.AddWithValue("@RequiredElo", DBNull.Value );
                             }
                             cmd.CommandText = "INSERT INTO QueueChannel(GuildID, ChannelID, Playlist, Ranked, RequiredElo) VALUES(@GuildID, @ChannelID, @Playlist, @Ranked, @RequiredElo);";
 
