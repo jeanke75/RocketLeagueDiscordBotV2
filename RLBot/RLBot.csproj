@@ -228,6 +228,7 @@
     <Compile Include="Modules\RegisterModule.cs" />
     <Compile Include="Modules\SettingsModule.cs" />
     <Compile Include="Modules\SupportModule.cs" />
+    <Compile Include="Preconditions\RequireAdministratorOrBotOwnerAttribute.cs" />
     <Compile Include="Preconditions\CooldownAttribute.cs" />
     <Compile Include="Preconditions\HiddenAttribute.cs" />
     <Compile Include="Preconditions\RequireChannelAttribute.cs" />

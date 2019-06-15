@@ -5,7 +5,6 @@ using Discord.Net;
 using Discord.WebSocket;
 using RLBot.Data;
 using RLBot.Data.Models;
-using RLBot.Exceptions;
 using RLBot.Models;
 using System;
 using System.Collections.Concurrent;

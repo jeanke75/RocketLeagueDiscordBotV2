@@ -4,6 +4,7 @@ using Discord.Commands;
 using Discord.WebSocket;
 using RLBot.Data;
 using RLBot.Models;
+using RLBot.Preconditions;
 using RLBot.TypeReaders;
 using System;
 using System.Threading.Tasks;
@@ -12,8 +13,7 @@ namespace RLBot.Modules
 {
     [Name("Settings")]
     [Summary("Change settings for the bot")]
-    [RequireOwner]
-    //[RequireUserPermission(GuildPermission.Administrator)]
+    [RequireAdministratorOrBotOwner]
     public class SettingsModule : InteractiveBase<SocketCommandContext>
     {
         [Command("install", RunMode = RunMode.Async)]
