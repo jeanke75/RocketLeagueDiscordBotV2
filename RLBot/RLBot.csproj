@@ -215,11 +215,8 @@
     <Compile Include="Data\Models\QueuePlayer.cs" />
     <Compile Include="Data\Models\Settings.cs" />
     <Compile Include="Data\Models\UserInfo.cs" />
-    <Compile Include="Exceptions\RLException.cs" />
     <Compile Include="Models\RLPlaylist.cs" />
     <Compile Include="Models\RLQueue.cs" />
-    <Compile Include="Models\RLRank.cs" />
-    <Compile Include="Models\RLRegion.cs" />
     <Compile Include="Modules\DatabaseModule.cs" />
     <Compile Include="Modules\HelpModule.cs" />
     <Compile Include="Modules\InfoModule.cs" />

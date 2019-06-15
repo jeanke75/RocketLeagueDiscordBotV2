@@ -63,9 +63,9 @@ namespace RLBot.Modules
 
         [Command("createchannel", RunMode = RunMode.Async)]
         [Summary("Create a queue channel.")]
-        [Remarks("createchannel <1s/2s/3s>")]
+        [Remarks("createchannel")]
         [RequireBotPermission(GuildPermission.SendMessages | GuildPermission.ManageChannels)]
-        public async Task CreateQueueChannelAsync([OverrideTypeReader(typeof(RLPlaylistTypeReader))] RLPlaylist playlist)
+        public async Task CreateQueueChannelAsync()
         {
             await Context.Channel.TriggerTypingAsync();
             try
@@ -75,6 +75,20 @@ namespace RLBot.Modules
                 if (settings == null)
                 {
                     await ReplyAsync($"The bot needs to be installed first, use the command '{RLBot.COMMAND_PREFIX}install'.");
+                    return;
+                }
+
+                await ReplyAsync("What playlist is it for? (1s/2s/3s)");
+                var playlistResponse = await NextMessageAsync(timeout: new TimeSpan(0, 0, 30));
+                if (playlistResponse == null)
+                {
+                    await ReplyAsync("Message timed out..");
+                    return;
+                }
+                RLPlaylistTypeReader.TryParsePlaylist(playlistResponse.Content, out RLPlaylist? playlist);
+                if (playlist == null)
+                {
+                    await ReplyAsync(RLPlaylistTypeReader.InvalidPlaylistMessage());
                     return;
                 }
 
@@ -138,7 +152,7 @@ namespace RLBot.Modules
                     x.SlowModeInterval = 5;
                     x.Topic = $"Commands: {RLBot.COMMAND_PREFIX}qo(pen), {RLBot.COMMAND_PREFIX}qj(oin), {RLBot.COMMAND_PREFIX}ql(eave), {RLBot.COMMAND_PREFIX}qs(tatus), {RLBot.COMMAND_PREFIX}qsub, {RLBot.COMMAND_PREFIX}qp(ick), {RLBot.COMMAND_PREFIX}qr(eset)";
                 });
-                await Database.InsertQueueChannelAsync(Context.Guild.Id, queueChannel.Id, playlist, ranked, requiredElo);
+                await Database.InsertQueueChannelAsync(Context.Guild.Id, queueChannel.Id, playlist.Value, ranked, requiredElo);
 
                 // Set the bot's permissions
                 await queueChannel.AddPermissionOverwriteAsync(Context.Client.CurrentUser, new OverwritePermissions(PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Allow, PermValue.Deny));
@@ -160,9 +174,9 @@ namespace RLBot.Modules
 
         [Command("updatechannel", RunMode = RunMode.Async)]
         [Summary("Update a queue channel.")]
-        [Remarks("updatechannel <1s/2s/3s>")]
+        [Remarks("updatechannel")]
         [RequireBotPermission(GuildPermission.SendMessages | GuildPermission.ManageChannels)]
-        public async Task UpdateQueueChannelAsync([OverrideTypeReader(typeof(RLPlaylistTypeReader))] RLPlaylist playlist)
+        public async Task UpdateQueueChannelAsync()
         {
             await Context.Channel.TriggerTypingAsync();
             try
@@ -173,6 +187,20 @@ namespace RLBot.Modules
                 if (channel == null)
                 {
                     await ReplyAsync($"This command can only be used to update an existing queue channel. Use the command '{RLBot.COMMAND_PREFIX}createchannel' to make one instead.");
+                    return;
+                }
+
+                await ReplyAsync("What playlist is it for? (1s/2s/3s)");
+                var playlistResponse = await NextMessageAsync(timeout: new TimeSpan(0, 0, 30));
+                if (playlistResponse == null)
+                {
+                    await ReplyAsync("Message timed out..");
+                    return;
+                }
+                RLPlaylistTypeReader.TryParsePlaylist(playlistResponse.Content, out RLPlaylist? playlist);
+                if (playlist == null)
+                {
+                    await ReplyAsync(RLPlaylistTypeReader.InvalidPlaylistMessage());
                     return;
                 }
 
@@ -235,7 +263,7 @@ namespace RLBot.Modules
                     x.Name = name;
                 });
 
-                await Database.UpdateQueueChannelAsync(Context.Guild.Id, Context.Channel.Id, playlist, ranked, requiredElo);
+                await Database.UpdateQueueChannelAsync(Context.Guild.Id, Context.Channel.Id, playlist.Value, ranked, requiredElo);
                 await ReplyAsync($"The channel has been updated.");
             }
             catch (Exception ex)

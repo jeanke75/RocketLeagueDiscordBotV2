@@ -1,8 +1,8 @@
-﻿using System;
+﻿using Discord.Commands;
+using RLBot.Models;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Discord.Commands;
-using RLBot.Models;
 
 namespace RLBot.TypeReaders
 {
@@ -10,20 +10,39 @@ namespace RLBot.TypeReaders
     {
         public override Task<TypeReaderResult> ReadAsync(ICommandContext context, string input, IServiceProvider services)
         {
-            switch (input.ToLower())
+            if (TryParsePlaylist(input, out RLPlaylist? playlist))
+            {
+                return Task.FromResult(TypeReaderResult.FromSuccess(playlist.Value));
+            }
+
+            return Task.FromResult(TypeReaderResult.FromError(CommandError.ParseFailed, InvalidPlaylistMessage()));
+        }
+
+        public static bool TryParsePlaylist(string text, out RLPlaylist? playlist)
+        {
+            switch (text.ToLower())
             {
                 case "1s":
                 case "duel":
-                    return Task.FromResult(TypeReaderResult.FromSuccess(RLPlaylist.Duel));
+                    playlist = RLPlaylist.Duel;
+                    return true;
                 case "2s":
                 case "doubles":
-                    return Task.FromResult(TypeReaderResult.FromSuccess(RLPlaylist.Doubles));
+                    playlist = RLPlaylist.Doubles;
+                    return true;
                 case "3s":
                 case "standard":
-                    return Task.FromResult(TypeReaderResult.FromSuccess(RLPlaylist.Standard));
+                    playlist = RLPlaylist.Standard;
+                    return true;
+                default:
+                    playlist = null;
+                    return false;
             }
+        }
 
-            return Task.FromResult(TypeReaderResult.FromError(CommandError.ParseFailed, $"Not a valid Rocket League playlist. {string.Join(", ", Enum.GetValues(typeof(RLPlaylist)).Cast<RLPlaylist>())}"));
+        public static string InvalidPlaylistMessage()
+        {
+            return $"Not a valid Rocket League playlist. {string.Join(", ", Enum.GetValues(typeof(RLPlaylist)).Cast<RLPlaylist>())}";
         }
     }
 }
