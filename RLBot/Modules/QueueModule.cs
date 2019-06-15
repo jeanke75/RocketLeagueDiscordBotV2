@@ -631,27 +631,6 @@ namespace RLBot.Modules
                     // set the score
                     await Database.SetQueueResultAsync(Context.Guild.Id, queueId, scoreTeamA, scoreTeamB, queue.Playlist, players);
                     await msg.AddReactionAsync(new Emoji("🆗"));
-
-                    // update roles in case of a promotion/demotion
-                    var playlistRanks = Global.GetRanks(queue.Playlist);
-                    HashSet<ulong> rankRoleIds = new HashSet<ulong>(playlistRanks.Select(r => r.RoleID));
-                    foreach (QueuePlayer player in players)
-                    {
-                        var newRank = Global.GetRank(queue.Playlist, player.Elo);
-                        var user = Context.Guild.GetUser(player.UserId);
-
-                        // give the new role to the user
-                        if (!user.Roles.Select(x => x.Id).Contains(newRank.RoleID))
-                        {
-                            var newRole = Context.Guild.GetRole(newRank.RoleID);
-                            await user.AddRoleAsync(newRole);
-                        }
-
-                        //remove any of the other roles the user might have that are below or above his rank
-                        var rolesToRemove = user.Roles.Where(x => rankRoleIds.Contains(x.Id) && x.Id != newRank?.RoleID).ToList();
-                        if (rolesToRemove.Count() > 0)
-                            await user.RemoveRolesAsync(rolesToRemove);
-                    }
                 }
                 else
                     await msg.DeleteAsync();
