@@ -243,6 +243,11 @@ namespace RLBot.Modules
                     default:
                         return; // won't get here unless more playlists are added to the enum
                 }
+                
+                // Update the name
+                await (Context.Channel as SocketGuildChannel).ModifyAsync(x => {
+                    x.Name = name;
+                });
 
                 await Database.UpdateQueueChannelAsync(Context.Guild.Id, Context.Channel.Id, playlist, ranked, requiredElo);
                 await ReplyAsync($"The channel has been updated.");
