@@ -59,8 +59,6 @@ namespace RLBot.Modules
             }
         }
 
-
-
         [Command("setchannel", RunMode = RunMode.Async)]
         [Summary("Update the settings for the channel this is ran in.")]
         [Remarks("setchannel <1s/2s/3s> <ranked/unranked")]

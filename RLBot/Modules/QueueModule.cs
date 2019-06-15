@@ -437,11 +437,25 @@ namespace RLBot.Modules
         [Summary("Submit the score for a queue")]
         [Remarks("qresult <queue ID> <score team A> <score team B>")]
         [RequireBotPermission(GuildPermission.SendMessages | GuildPermission.ManageMessages | GuildPermission.AddReactions | GuildPermission.ManageChannels | GuildPermission.MoveMembers)]
-        [RequireChannel(398133512902934529)]
         public async Task SetResultAsync(long queueId, byte scoreTeamA, byte scoreTeamB)
         {
             try
             {
+                // Check if the bot has been set up yet for this guild
+                var settings = await Database.GetSettings(Context.Guild.Id);
+                if (settings == null)
+                {
+                    await ReplyAsync($"The bot needs to be installed first, use the command '{RLBot.COMMAND_PREFIX}install'.");
+                    return;
+                }
+
+                // Check if the command is ran in the correct channel
+                if (Context.Channel.Id != settings.SubmitChannelID)
+                {
+                    await ReplyAsync($"Scores can only be submitted in <#{settings.SubmitChannelID}!");
+                    return;
+                }
+
                 if (scoreTeamA < 0 || scoreTeamB < 0 || scoreTeamA == scoreTeamB)
                 {
                     await ReplyErrorAndDeleteAsync(Context.Message, "Invalid scores.", new TimeSpan(0, 0, 5));
