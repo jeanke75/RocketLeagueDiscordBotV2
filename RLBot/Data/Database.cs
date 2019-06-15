@@ -256,7 +256,8 @@ namespace RLBot.Data
                         result = new QueueChannel()
                         {
                             Playlist = (RLPlaylist)(byte)reader["Playlist"],
-                            Ranked = (bool)reader["Ranked"]
+                            Ranked = (bool)reader["Ranked"],
+                            RequiredElo = (int?)reader["RequiredElo"]
                         };
                     }
                     reader.Close();
@@ -282,7 +283,10 @@ namespace RLBot.Data
                             cmd.Parameters.AddWithValue("@ChannelID", DbType.Decimal).Value = (decimal)channelId;
                             cmd.Parameters.AddWithValue("@Playlist", DbType.Byte).Value = (byte)playlist;
                             cmd.Parameters.AddWithValue("@Ranked", DbType.Boolean).Value = ranked;
-                            cmd.Parameters.AddWithValue("@RequiredElo", DbType.Int32).Value = requiredElo;
+                            if (ranked)
+                            {
+                                cmd.Parameters.AddWithValue("@RequiredElo", DbType.Int32).Value = requiredElo;
+                            }
                             cmd.CommandText = "INSERT INTO QueueChannel(GuildID, ChannelID, Playlist, Ranked, RequiredElo) VALUES(@GuildID, @ChannelID, @Playlist, @Ranked, @RequiredElo);";
 
                             await cmd.ExecuteNonQueryAsync();
