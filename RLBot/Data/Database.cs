@@ -162,6 +162,69 @@ namespace RLBot.Data
         #endregion
 
         #region Server settings
+        #region General
+        public static async Task<Settings> GetSettings(ulong guildId)
+        {
+            Settings result = null;
+            using (SqlConnection conn = GetSqlConnection())
+            {
+                await conn.OpenAsync();
+                using (SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.Parameters.AddWithValue("@GuildID", DbType.Decimal).Value = (decimal)guildId;
+                    cmd.CommandText = "SELECT RoleID, SubmitChannelID FROM Settings WHERE GuildID = @GuildID;";
+
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.HasRows)
+                        {
+                            await reader.ReadAsync();
+                            result = new Settings()
+                            {
+                                RoleID = (ulong)(decimal)reader["RoleID"],
+                                SubmitChannelID = (ulong)(decimal)reader["SubmitChannelID"]
+                            };
+                        }
+                        reader.Close();
+                    }
+                }
+            }
+            return result;
+        }
+
+        public static async Task InsertSettingsAsync(ulong guildId, ulong roleId, ulong submitChannelId)
+        {
+            using (SqlConnection conn = GetSqlConnection())
+            {
+                await conn.OpenAsync();
+                using (SqlTransaction tr = conn.BeginTransaction())
+                {
+                    try
+                    {
+                        using (SqlCommand cmd = conn.CreateCommand())
+                        {
+                            cmd.Transaction = tr;
+
+                            cmd.Parameters.AddWithValue("@GuildID", DbType.Decimal).Value = (decimal)guildId;
+                            cmd.Parameters.AddWithValue("@RoleID", DbType.Decimal).Value = (decimal)roleId;
+                            cmd.Parameters.AddWithValue("@SubmitChannelID", DbType.Decimal).Value = (decimal)submitChannelId;
+                            cmd.CommandText = "INSERT INTO Settings(GuildID, RoleID, SubmitChannelID) VALUES(@GuildID, @RoleID, @SubmitChannelID);";
+
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+                        tr.Commit();
+                    }
+                    catch (Exception ex)
+                    {
+                        tr.Rollback();
+                        throw ex;
+                    }
+                }
+            }
+        }
+        #endregion
+
+        #region QueueChannel
         public static async Task<ChannelType> GetQueueChannelAsync(ulong guildId, ulong channelId)
         {
             ChannelType result = null;
@@ -295,6 +358,7 @@ namespace RLBot.Data
                 }
             }
         }
+        #endregion
         #endregion
 
         #region Queues
