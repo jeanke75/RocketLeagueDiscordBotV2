@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.Addons.Interactive;
 using Discord.Commands;
+using Discord.WebSocket;
 using RLBot.Data;
 using RLBot.Models;
 using RLBot.TypeReaders;
@@ -114,7 +115,24 @@ namespace RLBot.Modules
                     }
                 }
 
-                var queueChannel = await Context.Guild.CreateTextChannelAsync("submit-scores", x =>
+                string name;
+                switch (playlist)
+                {
+                    case RLPlaylist.Duel:
+                        name = "1v1";
+                        break;
+                    case RLPlaylist.Doubles:
+                        name = "2v2";
+                        break;
+                    case RLPlaylist.Standard:
+                        name = "3v3";
+                        break;
+                    default:
+                        return; // won't get here unless more playlists are added to the enum
+                }
+
+
+                var queueChannel = await Context.Guild.CreateTextChannelAsync(name, x =>
                 {
                     x.SlowModeInterval = 5;
                     x.Topic = $"Commands: '{RLBot.COMMAND_PREFIX}qo(pen)', '{RLBot.COMMAND_PREFIX}qj(oin)', '{RLBot.COMMAND_PREFIX}ql(eave)', '{RLBot.COMMAND_PREFIX}qs(tatus)', '{RLBot.COMMAND_PREFIX}qsub', '{RLBot.COMMAND_PREFIX}qp(ick)', '{RLBot.COMMAND_PREFIX}qr(eset)'";
@@ -155,7 +173,7 @@ namespace RLBot.Modules
         }
 
         [Command("deletechannel", RunMode = RunMode.Async)]
-        [Summary("Delete the settings for channel this is ran in.")]
+        [Summary("Delete the queue channel this command is ran in.")]
         [Remarks("deletechannel")]
         [RequireBotPermission(GuildPermission.SendMessages)]
         public async Task DeleteSettingsAsync()
@@ -176,6 +194,8 @@ namespace RLBot.Modules
                 {
                     await ReplyAsync($"No channel settings were found.");
                 }
+
+                await (Context.Channel as SocketGuildChannel).DeleteAsync();
             }
             catch (Exception ex)
             {
