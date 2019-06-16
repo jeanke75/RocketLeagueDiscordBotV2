@@ -56,9 +56,12 @@ namespace RLBot.Modules
                     dynamic Info = JArray.Parse(await response.Content.ReadAsStringAsync());
 
                     latestChanges =
-                    $"[{((string)Info[0].sha).Substring(0, 5)}]({Info[0].html_url}) {Info[0].commit.message}\n" +
+                    $"- {Info[0].commit.message}\n" +
+                    $"- {Info[1].commit.message}\n" +
+                    $"- {Info[2].commit.message}";
+                    /*$"[{((string)Info[0].sha).Substring(0, 5)}]({Info[0].html_url}) {Info[0].commit.message}\n" +
                     $"[{((string)Info[1].sha).Substring(0, 5)}]({Info[1].html_url}) {Info[1].commit.message}\n" +
-                    $"[{((string)Info[2].sha).Substring(0, 5)}]({Info[2].html_url}) {Info[2].commit.message}";
+                    $"[{((string)Info[2].sha).Substring(0, 5)}]({Info[2].html_url}) {Info[2].commit.message}";*/
                 }
 
                 response.Dispose();
@@ -76,7 +79,7 @@ namespace RLBot.Modules
                     $"**Runtime:** {RuntimeInformation.FrameworkDescription} {RuntimeInformation.OSArchitecture}\n" +
                     $"**Heap Size:** {Math.Round(GC.GetTotalMemory(true) / (1024.0 * 1024.0), 2).ToString()}MB\n" +
                     $"**Uptime**: {(DateTime.Now - Process.GetCurrentProcess().StartTime).ToString(@"d\d\ h\h\ m\m\ s\s")}")
-                .AddField("Latest Changes on Github", latestChanges)
+                .AddField("Latest Changes", latestChanges)
                 .Build());
         }
 
