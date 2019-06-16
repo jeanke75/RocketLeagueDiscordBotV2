@@ -42,7 +42,7 @@ namespace RLBot.Modules
         {
             if (bug == "") return;
 
-            var channel = Context.Client.GetChannel(387560503641374730) as IMessageChannel;
+            var channel = Context.Client.GetChannel(393390897573789699) as IMessageChannel;
             if (channel == null)
             {
                 var application = await Context.Client.GetApplicationInfoAsync();
