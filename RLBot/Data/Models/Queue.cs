@@ -5,6 +5,7 @@ namespace RLBot.Data.Models
 {
     public class Queue
     {
+        public ulong GuildID { get; set; }
         public long QueueID { get; set; }
         public byte ScoreTeamA { get; set; }
         public byte ScoreTeamB { get; set; }

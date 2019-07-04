@@ -379,27 +379,28 @@ namespace RLBot.Data
         #endregion
 
         #region Queues
-        public static async Task<Queue> GetQueueAsync(long queueId)
+        public static async Task<Queue> GetQueueAsync(ulong guildId, long queueId)
         {
             Queue result = null;
             using (SqlConnection conn = GetSqlConnection())
             {
                 await conn.OpenAsync();
-                result = await GetQueueAsync(conn, null, queueId);
+                result = await GetQueueAsync(conn, null, guildId, queueId);
             }
             return result;
         }
 
-        private static async Task<Queue> GetQueueAsync(SqlConnection conn, SqlTransaction tr, long queueId)
+        private static async Task<Queue> GetQueueAsync(SqlConnection conn, SqlTransaction tr, ulong guildId, long queueId)
         {
             Queue result = null;
             using (SqlCommand cmd = conn.CreateCommand())
             {
                 if (tr != null)
                     cmd.Transaction = tr;
-                
+
+                cmd.Parameters.AddWithValue("@GuildID", DbType.Decimal).Value = (decimal)guildId;
                 cmd.Parameters.AddWithValue("@QueueID", DbType.Int64).Value = queueId;
-                cmd.CommandText = "SELECT * FROM Queue WHERE QueueID = @QueueID;";
+                cmd.CommandText = "SELECT * FROM Queue WHERE GuildID = @GuildID AND QueueID = @QueueID;";
 
                 using (SqlDataReader reader = cmd.ExecuteReader())
                 {
@@ -408,7 +409,8 @@ namespace RLBot.Data
                         await reader.ReadAsync();
                         result = new Queue()
                         {
-                            QueueID = (long)reader["QueueID"],
+                            GuildID = guildId,
+                            QueueID = queueId,
                             ScoreTeamA = (byte)reader["ScoreTeamA"],
                             ScoreTeamB = (byte)reader["ScoreTeamB"],
                             Playlist = (RLPlaylist)(byte)reader["Playlist"],
@@ -435,8 +437,9 @@ namespace RLBot.Data
                         {
                             cmd.Transaction = tr;
 
+                            cmd.Parameters.AddWithValue("@GuildID", DbType.Decimal).Value = (decimal)guildId;
                             cmd.Parameters.AddWithValue("@Playlist", DbType.Byte).Value = (byte)type;
-                            cmd.CommandText = "INSERT INTO Queue(ScoreTeamA, ScoreTeamB, Created, Playlist) OUTPUT INSERTED.QueueID VALUES(0, 0, GETDATE(), @Playlist);";
+                            cmd.CommandText = "INSERT INTO Queue(GuildID, ScoreTeamA, ScoreTeamB, Created, Playlist) OUTPUT INSERTED.QueueID VALUES(@GuildID, 0, 0, GETDATE(), @Playlist);";
 
                             var res = await cmd.ExecuteScalarAsync();
                             queueId = (long)res;
@@ -446,12 +449,12 @@ namespace RLBot.Data
                         int i = 0;
                         foreach (SocketUser user in team_a)
                         {
-                            tasks[i] = InsertQueuePlayerAsync(conn, tr, queueId, guildId, user.Id, 0);
+                            tasks[i] = InsertQueuePlayerAsync(conn, tr, guildId, queueId, user.Id, 0);
                             i++;
                         }
                         foreach (SocketUser user in team_b)
                         {
-                            tasks[i] = InsertQueuePlayerAsync(conn, tr, queueId, guildId, user.Id, 1);
+                            tasks[i] = InsertQueuePlayerAsync(conn, tr, guildId, queueId, user.Id, 1);
                             i++;
                         }
 
@@ -469,22 +472,23 @@ namespace RLBot.Data
             return queueId;
         }
 
-        private static async Task UpdateQueueAsync(SqlConnection conn, SqlTransaction tr, long queueId, byte scoreTeamA, byte scoreTeamB)
+        private static async Task UpdateQueueAsync(SqlConnection conn, SqlTransaction tr, ulong guildId, long queueId, byte scoreTeamA, byte scoreTeamB)
         {
             using (SqlCommand cmd = conn.CreateCommand())
             {
                 cmd.Transaction = tr;
 
-                cmd.Parameters.AddWithValue("@QueueID", DbType.Decimal).Value = (decimal)queueId;
+                cmd.Parameters.AddWithValue("@GuildID", DbType.Decimal).Value = (decimal)guildId;
+                cmd.Parameters.AddWithValue("@QueueID", DbType.Int64).Value = queueId;
                 cmd.Parameters.AddWithValue("@ScoreTeamA", DbType.Byte).Value = scoreTeamA;
                 cmd.Parameters.AddWithValue("@ScoreTeamB", DbType.Byte).Value = scoreTeamB;
-                cmd.CommandText = "UPDATE Queue SET ScoreTeamA = @ScoreTeamA, ScoreTeamB = @ScoreTeamB WHERE QueueID = @QueueID;";
+                cmd.CommandText = "UPDATE Queue SET ScoreTeamA = @ScoreTeamA, ScoreTeamB = @ScoreTeamB WHERE GuildId = @GuildID AND QueueID = @QueueID;";
 
                 await cmd.ExecuteNonQueryAsync();
             }
         }
 
-        public static async Task<List<QueuePlayer>> GetQueuePlayersAsync(long queueId)
+        public static async Task<List<QueuePlayer>> GetQueuePlayersAsync(ulong guildId, long queueId)
         {
             List<QueuePlayer> result = new List<QueuePlayer>();
             using (SqlConnection conn = GetSqlConnection())
@@ -492,8 +496,9 @@ namespace RLBot.Data
                 await conn.OpenAsync();
                 using (SqlCommand cmd = conn.CreateCommand())
                 {
+                    cmd.Parameters.AddWithValue("@GuildID", DbType.Decimal).Value = (decimal)guildId;
                     cmd.Parameters.AddWithValue("@QueueID", DbType.Int64).Value = queueId;
-                    cmd.CommandText = "SELECT qp.UserID, qp.Team, Elo = case when q.Playlist = 1 then ui.Elo1s when q.Playlist = 2 then ui.Elo2s else ui.Elo3s end FROM QueuePlayer qp INNER JOIN Queue q ON q.QueueID = qp.QueueID INNER JOIN UserInfo ui ON ui.UserID = qp.UserID WHERE qp.QueueID = @QueueID;";
+                    cmd.CommandText = "SELECT qp.UserID, qp.Team, Elo = case when q.Playlist = 1 then ui.Elo1s when q.Playlist = 2 then ui.Elo2s else ui.Elo3s end FROM Queue q INNER JOIN QueuePlayer qp ON qp.GuildID = q.GuildID AND qp.QueueID = q.QueueID INNER JOIN UserInfo ui ON ui.GuildID = qp.GuildID AND ui.UserID = qp.UserID WHERE q.GuildID = @GuildID AND q.QueueID = @QueueID;";
                     using (SqlDataReader reader = cmd.ExecuteReader())
                     {
                         while (await reader.ReadAsync())
@@ -512,23 +517,23 @@ namespace RLBot.Data
             return result;
         }
 
-        private static async Task InsertQueuePlayerAsync(SqlConnection conn, SqlTransaction tr, long queueId, ulong guildId, ulong userId, byte team)
+        private static async Task InsertQueuePlayerAsync(SqlConnection conn, SqlTransaction tr, ulong guildId, long queueId, ulong userId, byte team)
         {
             using (SqlCommand cmd = conn.CreateCommand())
             {
                 cmd.Transaction = tr;
 
-                cmd.Parameters.AddWithValue("@QueueID", DbType.Int64).Value = queueId;
                 cmd.Parameters.AddWithValue("@GuildID", DbType.Decimal).Value = (decimal)guildId;
+                cmd.Parameters.AddWithValue("@QueueID", DbType.Int64).Value = queueId;
                 cmd.Parameters.AddWithValue("@UserID", DbType.Decimal).Value = (decimal)userId;
                 cmd.Parameters.AddWithValue("@Team", DbType.Byte).Value = team;
-                cmd.CommandText = "INSERT INTO QueuePlayer(QueueId, GuildID, UserID, Team) VALUES(@QueueId, @GuildID, @UserID, @Team);";
+                cmd.CommandText = "INSERT INTO QueuePlayer(GuildID, QueueId, UserID, Team) VALUES(@GuildID, @QueueId, @UserID, @Team);";
 
                 await cmd.ExecuteNonQueryAsync();
             }
         }
 
-        public static async Task SubstituteQueuePlayerAsync(long queueId, ulong subPlayer, ulong currentPlayer)
+        public static async Task SubstituteQueuePlayerAsync(ulong guildId, long queueId, ulong subPlayer, ulong currentPlayer)
         {
             using (SqlConnection conn = GetSqlConnection())
             {
@@ -541,10 +546,11 @@ namespace RLBot.Data
                         {
                             cmd.Transaction = tr;
 
-                            cmd.Parameters.AddWithValue("@QueueID", DbType.Decimal).Value = (decimal)queueId;
+                            cmd.Parameters.AddWithValue("@GuildID", DbType.Decimal).Value = (decimal)guildId;
+                            cmd.Parameters.AddWithValue("@QueueID", DbType.Int64).Value = queueId;
                             cmd.Parameters.AddWithValue("@NewUserID", DbType.Decimal).Value = (decimal)subPlayer;
                             cmd.Parameters.AddWithValue("@CurrentUserID", DbType.Decimal).Value = (decimal)currentPlayer;
-                            cmd.CommandText = "UPDATE QueuePlayer SET UserID = @NewUserID WHERE QueueID = @QueueID AND UserID = @CurrentUserID;";
+                            cmd.CommandText = "UPDATE QueuePlayer SET UserID = @NewUserID WHERE GuildID = @GuildID AND QueueID = @QueueID AND UserID = @CurrentUserID;";
 
                             await cmd.ExecuteNonQueryAsync();
                         }
@@ -569,7 +575,7 @@ namespace RLBot.Data
                     try
                     {
                         // check if the queue exists and if the score hasn't been submitted yet
-                        var queue = await GetQueueAsync(conn, tr, queueId);
+                        var queue = await GetQueueAsync(conn, tr, guildId, queueId);
                         if (queue == null)
                             throw new Exception($"Didn't find queue {queueId}!");
                         
@@ -577,7 +583,7 @@ namespace RLBot.Data
                             throw new Exception($"The score for queue {queueId} has already been submitted!");
                         
                         // update the queue score
-                        await UpdateQueueAsync(conn, tr, queueId, scoreTeamA, scoreTeamB);
+                        await UpdateQueueAsync(conn, tr, guildId, queueId, scoreTeamA, scoreTeamB);
 
                         // update player elos
                         foreach (QueuePlayer player in players)
@@ -603,13 +609,13 @@ namespace RLBot.Data
             Leaderboard rec = null;
             using (SqlCommand cmd = conn.CreateCommand())
             {
-                cmd.Parameters.AddWithValue("@Playlist", DbType.Byte).Value = (byte)playlist;
                 cmd.Parameters.AddWithValue("@GuildID", DbType.Decimal).Value = (decimal)guildId;
+                cmd.Parameters.AddWithValue("@Playlist", DbType.Byte).Value = (byte)playlist;
                 cmd.Parameters.AddWithValue("@UserID", DbType.Decimal).Value = (decimal)userId;
                 if (monthly)
-                    cmd.CommandText = "select * from (select row_number() OVER (ORDER BY x.Wins DESC, x.TotalGames ASC) as Rank, x.UserID, x.Wins, x.TotalGames from (SELECT qp.UserID, ISNULL(SUM(CASE WHEN ((qp.Team = 0 AND q.ScoreTeamA > q.ScoreTeamB) OR (qp.Team = 1 AND q.ScoreTeamA < q.ScoreTeamB)) THEN 1 END), 0) as Wins, COUNT(1) as TotalGames FROM Queue q INNER JOIN QueuePlayer qp ON qp.GuildID = @GuildID AND qp.QueueID = q.QueueID WHERE ((q.ScoreTeamA > 0 OR q.ScoreTeamB > 0) OR (DATEDIFF(hour, q.Created, GetDate()) > 24))  AND q.Created >= CAST(DATEADD(dd, -DAY(GETDATE()) + 1, GETDATE()) AS DATE) AND q.Created < CAST(DATEADD(month, DATEDIFF(month, 0, GETDATE()) + 1, 0) AS DATE) AND q.Playlist = @Playlist GROUP BY qp.UserID) x ) y WHERE y.UserID = @UserID";
+                    cmd.CommandText = "SELECT * FROM ( SELECT row_number() OVER (ORDER BY x.Wins DESC, x.TotalGames ASC) AS Rank, x.UserID, x.Wins, x.TotalGames FROM ( SELECT qp.UserID, ISNULL(SUM(CASE WHEN ((qp.Team = 0 AND q.ScoreTeamA > q.ScoreTeamB) OR (qp.Team = 1 AND q.ScoreTeamA < q.ScoreTeamB)) THEN 1 END), 0) AS Wins, COUNT(1) AS TotalGames FROM Queue q INNER JOIN QueuePlayer qp ON qp.GuildID = q.GuildID AND qp.QueueID = q.QueueID WHERE ((q.ScoreTeamA > 0 OR q.ScoreTeamB > 0) OR (DATEDIFF(hour, q.Created, GetDate()) > 24)) AND q.Created >= CAST(DATEADD(dd, -DAY(GETDATE()) + 1, GETDATE()) AS DATE) AND q.Created < CAST(DATEADD(month, DATEDIFF(month, 0, GETDATE()) + 1, 0) AS DATE) AND q.GuildID = @GuildID AND q.Playlist = @Playlist GROUP BY qp.UserID) x ) y WHERE y.UserID = @UserID;";
                 else
-                    cmd.CommandText = "select * from (select row_number() OVER (ORDER BY x.Wins DESC, x.TotalGames ASC) as Rank, x.UserID, x.Wins, x.TotalGames from (SELECT qp.UserID, ISNULL(SUM(CASE WHEN ((qp.Team = 0 AND q.ScoreTeamA > q.ScoreTeamB) OR (qp.Team = 1 AND q.ScoreTeamA < q.ScoreTeamB)) THEN 1 END), 0) as Wins, COUNT(1) as TotalGames FROM Queue q INNER JOIN QueuePlayer qp ON qp.GuildID = @GuildID AND qp.QueueID = q.QueueID WHERE ((q.ScoreTeamA > 0 OR q.ScoreTeamB > 0) OR (DATEDIFF(hour, q.Created, GetDate()) > 24)) AND q.Playlist = @Playlist GROUP BY qp.UserID) x ) y WHERE y.UserID = @UserID";
+                    cmd.CommandText = "SELECT * FROM ( SELECT row_number() OVER (ORDER BY x.Wins DESC, x.TotalGames ASC) AS Rank, x.UserID, x.Wins, x.TotalGames FROM ( SELECT qp.UserID, ISNULL(SUM(CASE WHEN ((qp.Team = 0 AND q.ScoreTeamA > q.ScoreTeamB) OR (qp.Team = 1 AND q.ScoreTeamA < q.ScoreTeamB)) THEN 1 END), 0) AS Wins, COUNT(1) AS TotalGames FROM Queue q INNER JOIN QueuePlayer qp ON qp.GuildID = q.GuildID AND qp.QueueID = q.QueueID WHERE ((q.ScoreTeamA > 0 OR q.ScoreTeamB > 0) OR (DATEDIFF(hour, q.Created, GetDate()) > 24)) AND q.GuildID = @GuildID AND q.Playlist = @Playlist GROUP BY qp.UserID) x ) y WHERE y.UserID = @UserID;";
                 using (SqlDataReader reader = cmd.ExecuteReader())
                 {
                     if (reader.HasRows)
@@ -637,9 +643,9 @@ namespace RLBot.Data
                 cmd.Parameters.AddWithValue("@Playlist", DbType.Byte).Value = (byte)playlist;
                 cmd.Parameters.AddWithValue("@GuildID", DbType.Decimal).Value = (decimal)guildId;
                 if (monthly)
-                    cmd.CommandText = "select TOP 5 * from (select row_number() OVER (ORDER BY x.Wins DESC, x.TotalGames ASC) as Rank, x.UserID, x.Wins, x.TotalGames from (SELECT qp.UserID, ISNULL(SUM(CASE WHEN ((qp.Team = 0 AND q.ScoreTeamA > q.ScoreTeamB) OR (qp.Team = 1 AND q.ScoreTeamA < q.ScoreTeamB)) THEN 1 END), 0) as Wins, COUNT(1) as TotalGames FROM Queue q INNER JOIN QueuePlayer qp ON qp.GuildID = @GuildID AND qp.QueueID = q.QueueID WHERE ((q.ScoreTeamA > 0 OR q.ScoreTeamB > 0) OR (DATEDIFF(hour, q.Created, GetDate()) > 24))  AND q.Created >= CAST(DATEADD(dd, -DAY(GETDATE()) + 1, GETDATE()) AS DATE) AND q.Created < CAST(DATEADD(month, DATEDIFF(month, 0, GETDATE()) + 1, 0) AS DATE) AND q.Playlist = @Playlist GROUP BY qp.UserID) x ) y order by y.Rank";
+                    cmd.CommandText = "SELECT TOP 5 * FROM ( SELECT row_number() OVER (ORDER BY x.Wins DESC, x.TotalGames ASC) AS Rank, x.UserID, x.Wins, x.TotalGames FROM ( SELECT qp.UserID, ISNULL(SUM(CASE WHEN ((qp.Team = 0 AND q.ScoreTeamA > q.ScoreTeamB) OR (qp.Team = 1 AND q.ScoreTeamA < q.ScoreTeamB)) THEN 1 END), 0) AS Wins, COUNT(1) AS TotalGames FROM Queue q INNER JOIN QueuePlayer qp ON qp.GuildID = q.GuildID AND qp.QueueID = q.QueueID WHERE ((q.ScoreTeamA > 0 OR q.ScoreTeamB > 0) OR (DATEDIFF(hour, q.Created, GetDate()) > 24)) AND q.Created >= CAST(DATEADD(dd, -DAY(GETDATE()) + 1, GETDATE()) AS DATE) AND q.Created < CAST(DATEADD(month, DATEDIFF(month, 0, GETDATE()) + 1, 0) AS DATE) AND q.GuildID = @GuildID AND q.Playlist = @Playlist GROUP BY qp.UserID) x ) y order by y.Rank;";
                 else
-                    cmd.CommandText = "select TOP 5 * from (select row_number() OVER (ORDER BY x.Wins DESC, x.TotalGames ASC) as Rank, x.UserID, x.Wins, x.TotalGames from (SELECT qp.UserID, ISNULL(SUM(CASE WHEN ((qp.Team = 0 AND q.ScoreTeamA > q.ScoreTeamB) OR (qp.Team = 1 AND q.ScoreTeamA < q.ScoreTeamB)) THEN 1 END), 0) as Wins, COUNT(1) as TotalGames FROM Queue q INNER JOIN QueuePlayer qp ON qp.GuildID = @GuildID AND qp.QueueID = q.QueueID WHERE ((q.ScoreTeamA > 0 OR q.ScoreTeamB > 0) OR (DATEDIFF(hour, q.Created, GetDate()) > 24)) AND q.Playlist = @Playlist GROUP BY qp.UserID) x ) y order by y.Rank";
+                    cmd.CommandText = "SELECT TOP 5 * FROM ( SELECT row_number() OVER (ORDER BY x.Wins DESC, x.TotalGames ASC) AS Rank, x.UserID, x.Wins, x.TotalGames FROM ( SELECT qp.UserID, ISNULL(SUM(CASE WHEN ((qp.Team = 0 AND q.ScoreTeamA > q.ScoreTeamB) OR (qp.Team = 1 AND q.ScoreTeamA < q.ScoreTeamB)) THEN 1 END), 0) AS Wins, COUNT(1) AS TotalGames FROM Queue q INNER JOIN QueuePlayer qp ON qp.GuildID = q.GuildID AND qp.QueueID = q.QueueID WHERE ((q.ScoreTeamA > 0 OR q.ScoreTeamB > 0) OR (DATEDIFF(hour, q.Created, GetDate()) > 24)) AND q.GuildID = @GuildID AND q.Playlist = @Playlist GROUP BY qp.UserID) x ) y order by y.Rank";
                 using (SqlDataReader reader = cmd.ExecuteReader())
                 {
                     while (await reader.ReadAsync())

@@ -205,8 +205,15 @@ namespace RLBot.Modules
                     return;
                 }
 
+                var userinfo = await Database.GetUserInfoAsync(Context.Guild.Id, subPlayer.Id);
+                if (userinfo == null)
+                {
+                    await ReplyAsync($"{author.Mention}, {subPlayer} needs to register first.");
+                    return;
+                }
+
                 // retrieve the queue data if it exists
-                var queue = await Database.GetQueueAsync(queueId);
+                var queue = await Database.GetQueueAsync(Context.Guild.Id, queueId);
                 if (queue == null)
                 {
                     await ReplyAsync($"{author.Mention}, queue {queueId} doesn't exist!");
@@ -220,7 +227,7 @@ namespace RLBot.Modules
                     return;
                 }
 
-                List<QueuePlayer> players = await Database.GetQueuePlayersAsync(queueId);
+                List<QueuePlayer> players = await Database.GetQueuePlayersAsync(Context.Guild.Id, queueId);
                 if (players.Count == 0)
                 {
                     await ReplyAsync($"{author.Mention}, failed to retrieve the players from queue {queueId}, please try again.");
@@ -254,7 +261,7 @@ namespace RLBot.Modules
                     return;
                 }
 
-                await Database.SubstituteQueuePlayerAsync(queueId, subPlayer.Id, currentPlayer.Id);
+                await Database.SubstituteQueuePlayerAsync(Context.Guild.Id, queueId, subPlayer.Id, currentPlayer.Id);
 
                 var voiceChannel = Context.Guild.VoiceChannels.SingleOrDefault(x => x.Name.Equals($"Team {(currentInQueue.Team == 0 ? "A" : "B")} #{queueId}"));
                 await voiceChannel.AddPermissionOverwriteAsync(subPlayer, teamPerms);
@@ -469,7 +476,7 @@ namespace RLBot.Modules
                 await ReplyAsync(string.Format(NOT_ENOUGH_PLAYERS, queue.Users.Count, queue.GetSize()));
         }*/
 
-        [Command("qresult", RunMode = RunMode.Async)]
+        [Command("qresult"/*, RunMode = RunMode.Async*/)]
         [Summary("Submit the score for a queue")]
         [Remarks("qresult <queue ID> <score team A> <score team B>")]
         [RequireBotPermission(GuildPermission.SendMessages | GuildPermission.ManageMessages | GuildPermission.AddReactions | GuildPermission.ManageChannels | GuildPermission.MoveMembers)]
@@ -498,7 +505,7 @@ namespace RLBot.Modules
                     return;
                 }
 
-                var queue = await Database.GetQueueAsync(queueId);
+                var queue = await Database.GetQueueAsync(Context.Guild.Id, queueId);
                 if (queue == null)
                 {
                     await ReplyErrorAndDeleteAsync(Context.Message, $"Didn't find queue {queueId}!", new TimeSpan(0, 0, 5));
@@ -512,7 +519,7 @@ namespace RLBot.Modules
                     return;
                 }
 
-                List<QueuePlayer> players = await Database.GetQueuePlayersAsync(queueId);
+                List<QueuePlayer> players = await Database.GetQueuePlayersAsync(Context.Guild.Id, queueId);
                 if (players.Count == 0)
                 {
                     await ReplyErrorAndDeleteAsync(Context.Message, $"Failed to retrieve the players from queue {queueId}, please try again.", new TimeSpan(0, 0, 5));
