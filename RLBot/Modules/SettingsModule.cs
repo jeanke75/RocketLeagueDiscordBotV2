@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.Addons.Interactive;
 using Discord.Commands;
+using Discord.Rest;
 using Discord.WebSocket;
 using RLBot.Data;
 using RLBot.Models;
@@ -16,6 +17,13 @@ namespace RLBot.Modules
     [RequireAdministratorOrBotOwner]
     public class SettingsModule : InteractiveBase<SocketCommandContext>
     {
+        private static readonly string roleName = "RLBot";
+        private static readonly GuildPermissions rolePermissions = new GuildPermissions(false, false, false, false, false, false, true, false, false, true, false, false, true, true, true, false, true, true, true, false, false, false, true, false, false, false, false, false, false);
+        private static readonly Color roleColor = Color.Orange;
+        private static readonly OverwritePermissions submitChannelBotPermissions = new OverwritePermissions(PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Allow, PermValue.Deny);
+        private static readonly OverwritePermissions submitChannelPlayerPermissions = new OverwritePermissions(PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Allow, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny);
+        private static readonly OverwritePermissions submitChannelEveryonePermissions = new OverwritePermissions(PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny);
+
         [Command("install", RunMode = RunMode.Async)]
         [Summary("Creates a role and a channel for submitting the scores.")]
         [Remarks("install")]
@@ -32,7 +40,7 @@ namespace RLBot.Modules
                 }
                 
                 // Add the role
-                var role = await Context.Guild.CreateRoleAsync("RLBot", new GuildPermissions(false, false, false, false, false, false, true, false, false, true, false, false, true, true, true, false, true, true, true, false, false, false, true, false, false, false, false, false, false), Color.Orange, false);
+                var role = await Context.Guild.CreateRoleAsync(roleName, rolePermissions, roleColor, false);
 
                 // Add the submitchannel
                 var submitChannel = await Context.Guild.CreateTextChannelAsync("submit-scores", x =>
@@ -42,13 +50,13 @@ namespace RLBot.Modules
                 });
 
                 // Set the bot's permissions
-                await submitChannel.AddPermissionOverwriteAsync(Context.Client.CurrentUser, new OverwritePermissions(PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Allow, PermValue.Deny));
+                await submitChannel.AddPermissionOverwriteAsync(Context.Client.CurrentUser, submitChannelBotPermissions);
 
                 // Give permission to people with the role
-                await submitChannel.AddPermissionOverwriteAsync(role, new OverwritePermissions(PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Allow, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny));
+                await submitChannel.AddPermissionOverwriteAsync(role, submitChannelPlayerPermissions);
 
                 // Remove all permissions for everyone else
-                await submitChannel.AddPermissionOverwriteAsync(Context.Guild.EveryoneRole, new OverwritePermissions(PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny));
+                await submitChannel.AddPermissionOverwriteAsync(Context.Guild.EveryoneRole, submitChannelEveryonePermissions);
 
                 // Save the id's in the database
                 await Database.InsertSettingsAsync(Context.Guild.Id, role.Id, submitChannel.Id);
@@ -58,6 +66,60 @@ namespace RLBot.Modules
             catch (Exception ex)
             {
                 await ReplyAsync($"Installation of the bot failed: " + ex.Message);
+            }
+        }
+
+        [Command("repair", RunMode = RunMode.Async)]
+        [Summary("Run this if the role or submitchannel have been deleted.")]
+        [Remarks("repair")]
+        [RequireBotPermission(GuildPermission.SendMessages | GuildPermission.ManageRoles | GuildPermission.ManageChannels)]
+        public async Task RepairAsync()
+        {
+            await Context.Channel.TriggerTypingAsync();
+            try
+            {
+                var settings = await Database.GetSettings(Context.Guild.Id);
+                if (settings == null)
+                {
+                    await ReplyAsync($"The bot needs to be installed first, use the command '{RLBot.COMMAND_PREFIX}install'.");
+                    return;
+                }
+
+                // Add the role
+                IRole role = Context.Guild.GetRole(settings.RoleID); 
+                if (role == null)
+                {
+                    role = await Context.Guild.CreateRoleAsync(roleName, rolePermissions, roleColor, false);
+                }
+
+                // Add the submitchannel
+                IChannel submitChannel = Context.Guild.GetChannel(settings.SubmitChannelID);
+                if (submitChannel == null)
+                {
+                    submitChannel = await Context.Guild.CreateTextChannelAsync("submit-scores", x =>
+                    {
+                        x.SlowModeInterval = 5;
+                        x.Topic = $"Use '{RLBot.COMMAND_PREFIX}qresult <queue ID> <score team A> <score team B>' to submit a match result. No chatting allowed!";
+                    });
+                }
+
+                // Set the bot's permissions
+                await ((RestTextChannel)submitChannel).AddPermissionOverwriteAsync(Context.Client.CurrentUser, submitChannelBotPermissions);
+
+                // Give permission to people with the role
+                await ((RestTextChannel)submitChannel).AddPermissionOverwriteAsync(role, submitChannelPlayerPermissions);
+
+                // Remove all permissions for everyone else
+                await ((RestTextChannel)submitChannel).AddPermissionOverwriteAsync(Context.Guild.EveryoneRole, submitChannelEveryonePermissions);
+
+                // Save the id's in the database
+                await Database.UpdateSettingsAsync(Context.Guild.Id, role.Id, submitChannel.Id);
+
+                await ReplyAsync($"The bot has been succesfully repaired.");
+            }
+            catch (Exception ex)
+            {
+                await ReplyAsync($"Repair of the bot failed: " + ex.Message);
             }
         }
 
@@ -276,7 +338,7 @@ namespace RLBot.Modules
         [Summary("Delete the queue channel this command is ran in.")]
         [Remarks("deletechannel")]
         [RequireBotPermission(GuildPermission.SendMessages)]
-        public async Task DeleteSettingsAsync()
+        public async Task DeleteQueueChannelAsync()
         {
             await Context.Channel.TriggerTypingAsync();
             try

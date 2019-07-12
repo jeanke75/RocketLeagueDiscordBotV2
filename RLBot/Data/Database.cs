@@ -222,6 +222,37 @@ namespace RLBot.Data
                 }
             }
         }
+
+        public static async Task UpdateSettingsAsync(ulong guildId, ulong roleId, ulong submitChannelId)
+        {
+            using (SqlConnection conn = GetSqlConnection())
+            {
+                await conn.OpenAsync();
+                using (SqlTransaction tr = conn.BeginTransaction())
+                {
+                    try
+                    {
+                        using (SqlCommand cmd = conn.CreateCommand())
+                        {
+                            cmd.Transaction = tr;
+
+                            cmd.Parameters.AddWithValue("@GuildID", DbType.Decimal).Value = (decimal)guildId;
+                            cmd.Parameters.AddWithValue("@RoleID", DbType.Decimal).Value = (decimal)roleId;
+                            cmd.Parameters.AddWithValue("@SubmitChannelID", DbType.Decimal).Value = (decimal)submitChannelId;
+                            cmd.CommandText = "UPDATE Settings SET RoleID = @RoleID, SubmitChannelID = @SubmitChannelID WHERE GuildID = @GuildID;";
+
+                            await cmd.ExecuteNonQueryAsync();
+                        }
+                        tr.Commit();
+                    }
+                    catch (Exception ex)
+                    {
+                        tr.Rollback();
+                        throw ex;
+                    }
+                }
+            }
+        }
         #endregion
 
         #region QueueChannel
