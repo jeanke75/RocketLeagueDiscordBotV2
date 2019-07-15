@@ -21,61 +21,18 @@ namespace RLBot.Modules
     {
         private static readonly ConcurrentDictionary<ulong, RLQueue> queues = new ConcurrentDictionary<ulong, RLQueue>();
         private static readonly Random rnd = new Random();
-        private readonly string NOT_OPEN = "There is no open queue atm. Type \"" + RLBot.COMMAND_PREFIX + "qopen\", to start a new one.";
+        private readonly string NOT_OPEN = "There is no open queue atm. Type \"" + RLBot.COMMAND_PREFIX + "qjoin\", to start a new one.";
         private readonly string NOT_ENOUGH_PLAYERS = "Not enough players have joined the queue yet! {0}/{1}";
 
         private readonly OverwritePermissions botPerms = new OverwritePermissions(PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow, PermValue.Allow);
         private readonly OverwritePermissions teamPerms = new OverwritePermissions(PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Allow, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Allow, PermValue.Allow, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Allow, PermValue.Deny, PermValue.Deny);
         private readonly OverwritePermissions everyonePerms = new OverwritePermissions(PermValue.Deny, PermValue.Inherit, PermValue.Deny, PermValue.Allow, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny, PermValue.Deny);
 
-        [Command("qopen")]
-        [Alias("qo")]
-        [Summary("Create a new queue that people can join")]
-        [Remarks("qopen")]
-        [RequireBotPermission(GuildPermission.SendMessages)]
-        public async Task OpenQueueAsync()
-        {
-            var queueChannel = await Database.GetQueueChannelAsync(Context.Guild.Id, Context.Channel.Id);
-            if (queueChannel == null)
-            {
-                return;
-            }
-
-            if (!queues.TryGetValue(Context.Channel.Id, out _))
-            {
-                var channel = Context.Channel as SocketGuildChannel;
-
-                RLQueue queue;
-                switch (queueChannel.Playlist)
-                {
-                    case RLPlaylist.Duel:
-                        queue = RLQueue.DuelQueue(channel, queueChannel.Ranked);
-                        break;
-                    case RLPlaylist.Doubles:
-                        queue = RLQueue.DoublesQueue(channel, queueChannel.Ranked);
-                        break;
-                    case RLPlaylist.Standard:
-                        queue = RLQueue.StandardQueue(channel, queueChannel.Ranked);
-                        break;
-                    default:
-                        await ReplyAsync("This is not valid queue type.");
-                        return;
-                }
-
-                if (queues.TryAdd(Context.Channel.Id, queue))
-                    await ReplyAsync("The queue is open. Type \"" + RLBot.COMMAND_PREFIX + "qjoin\", to join it.");
-                else
-                    await ReplyAsync("Failed to create a new queue, please try again.");
-            }
-            else
-                await ReplyAsync("There is already an active queue. Type \"" + RLBot.COMMAND_PREFIX + "qjoin\", to join it.");
-        }
-
         [Command("qjoin")]
         [Alias("qj")]
         [Summary("Join the queue")]
         [Remarks("qjoin")]
-        [RequireBotPermission(GuildPermission.SendMessages)]
+        [RequireBotPermission(GuildPermission.SendMessages | GuildPermission.EmbedLinks)]
         public async Task JoinQueueAsync()
         {
             var queueChannel = await Database.GetQueueChannelAsync(Context.Guild.Id, Context.Channel.Id);
@@ -95,8 +52,25 @@ namespace RLBot.Modules
 
             if (!queues.TryGetValue(Context.Channel.Id, out RLQueue queue))
             {
-                await ReplyAsync(NOT_OPEN);
-                return;
+                var channel = Context.Channel as SocketGuildChannel;
+
+                switch (queueChannel.Playlist)
+                {
+                    case RLPlaylist.Duel:
+                        queue = RLQueue.DuelQueue(channel, queueChannel.Ranked);
+                        break;
+                    case RLPlaylist.Doubles:
+                        queue = RLQueue.DoublesQueue(channel, queueChannel.Ranked);
+                        break;
+                    case RLPlaylist.Standard:
+                        queue = RLQueue.StandardQueue(channel, queueChannel.Ranked);
+                        break;
+                    default:
+                        await ReplyAsync("This is not valid queue type.");
+                        return;
+                }
+
+                queues.TryAdd(Context.Channel.Id, queue);
             }
 
             if (queue.Users.Count < queue.GetSize())
@@ -107,7 +81,12 @@ namespace RLBot.Modules
                     if (!queue.Users.ContainsKey(author.Id))
                     {
                         if (queue.Users.TryAdd(author.Id, author))
-                            await ReplyAsync($"{author.Mention} joined the queue. {queue.Users.Count}/{queue.GetSize()}");
+                            await ReplyAsync("", embed: new EmbedBuilder()
+                                        .WithColor(RLBot.EMBED_COLOR)
+                                        .WithTitle($"{queue.Playlist} queue {queue.Users.Count}/{queue.GetSize()}")
+                                        .AddField("Result", $"{author.Mention} joined.")
+                                        .AddField("Current players", string.Join(", ", queue.Users.Values))
+                                        .Build());
                         else
                             await ReplyAsync($"Failed to add {author.Mention} to the queue, please try again.");
                     }
@@ -142,7 +121,14 @@ namespace RLBot.Modules
             }
 
             if (queue.Users.TryRemove(author.Id, out _))
-                await ReplyAsync($"{author.Mention} left the queue. {queue.Users.Count}/{queue.GetSize()}");
+            {
+                var users = queue.Users.Count > 0 ? string.Join(", ", queue.Users.Values) : "None";
+                await ReplyAsync("", embed: new EmbedBuilder()
+                    .WithColor(RLBot.EMBED_COLOR)
+                    .AddField($"{queue.Playlist} queue {queue.Users.Count}/{queue.GetSize()}", $"{author.Mention} left.")
+                    .AddField("Current players", users)
+                    .Build());
+            }
             else
                 await ReplyAsync($"{author.Mention}, you're not in the current queue.");
         }
@@ -476,7 +462,7 @@ namespace RLBot.Modules
                 await ReplyAsync(string.Format(NOT_ENOUGH_PLAYERS, queue.Users.Count, queue.GetSize()));
         }*/
 
-        [Command("qresult"/*, RunMode = RunMode.Async*/)]
+        [Command("qresult", RunMode = RunMode.Async)]
         [Summary("Submit the score for a queue")]
         [Remarks("qresult <queue ID> <score team A> <score team B>")]
         [RequireBotPermission(GuildPermission.SendMessages | GuildPermission.ManageMessages | GuildPermission.AddReactions | GuildPermission.ManageChannels | GuildPermission.MoveMembers)]
