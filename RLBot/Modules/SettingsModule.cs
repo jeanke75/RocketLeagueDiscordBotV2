@@ -93,7 +93,7 @@ namespace RLBot.Modules
                 }
 
                 // Add the submitchannel
-                IChannel submitChannel = Context.Guild.GetChannel(settings.SubmitChannelID);
+                ITextChannel submitChannel = Context.Guild.GetTextChannel(settings.SubmitChannelID);
                 if (submitChannel == null)
                 {
                     submitChannel = await Context.Guild.CreateTextChannelAsync("submit-scores", x =>
@@ -104,13 +104,13 @@ namespace RLBot.Modules
                 }
 
                 // Set the bot's permissions
-                await ((RestTextChannel)submitChannel).AddPermissionOverwriteAsync(Context.Client.CurrentUser, submitChannelBotPermissions);
+                await submitChannel.AddPermissionOverwriteAsync(Context.Client.CurrentUser, submitChannelBotPermissions);
 
                 // Give permission to people with the role
-                await ((RestTextChannel)submitChannel).AddPermissionOverwriteAsync(role, submitChannelPlayerPermissions);
+                await submitChannel.AddPermissionOverwriteAsync(role, submitChannelPlayerPermissions);
 
                 // Remove all permissions for everyone else
-                await ((RestTextChannel)submitChannel).AddPermissionOverwriteAsync(Context.Guild.EveryoneRole, submitChannelEveryonePermissions);
+                await submitChannel.AddPermissionOverwriteAsync(Context.Guild.EveryoneRole, submitChannelEveryonePermissions);
 
                 // Save the id's in the database
                 await Database.UpdateSettingsAsync(Context.Guild.Id, role.Id, submitChannel.Id);
