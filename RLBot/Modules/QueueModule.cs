@@ -523,14 +523,14 @@ namespace RLBot.Modules
                 var channels = Context.Guild.VoiceChannels.Where(x => x.Name.Contains($"#{queueId}")).ToArray();
                 var channelUsers = channels.SelectMany(x => x.Users).ToArray();
 
-                // move users back to the general voice channel
-                var usersTasks = new Task[channelUsers.Count()];
+                // move users back to the general voice channel TODO: possibly create a voice channel on install so there is a channel to move people to
+                /*var usersTasks = new Task[channelUsers.Count()];
                 for (int i = 0; i < usersTasks.Length; i++)
                 {
                     usersTasks[i] = channelUsers[i].ModifyAsync(x => x.ChannelId = 385131574817062915);
                 }
 
-                await Task.WhenAll(usersTasks);
+                await Task.WhenAll(usersTasks);*/
 
                 // delete the voice channels
                 var channelsTasks = new Task[channels.Count()];
